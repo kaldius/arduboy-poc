@@ -2,6 +2,8 @@
 
 Terminal-first Arduboy project using the local Arduboy2 checkout at `../arduboy2`.
 
+The sketch is a small Rust FFI proof of concept: Arduboy2/C++ handles hardware setup, input, drawing, and upload; Rust owns the game state and update logic.
+
 ## Toolchain
 
 Installed locally:
@@ -9,6 +11,7 @@ Installed locally:
 - `arduino-cli` 1.5.1
 - `arduino:avr` 1.8.8
 - `arduboy:avr` 1.1.0
+- Rust nightly with `rust-src`
 
 The default board target is `arduboy:avr:arduboy`. If needed, the sketch can also be built as a Leonardo-compatible target with `FQBN=arduino:avr:leonardo`.
 
@@ -39,7 +42,12 @@ brew install arduino-cli
 arduino-cli core update-index --additional-urls https://arduboy.github.io/board-support/package_arduboy_index.json
 arduino-cli core install arduino:avr
 arduino-cli core install arduboy:avr --additional-urls https://arduboy.github.io/board-support/package_arduboy_index.json
+rustup toolchain install nightly --component rust-src
 ```
+
+The Rust crate points Cargo at Arduino CLI's bundled AVR GCC:
+
+`/Users/quantf/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-gcc`
 
 ## Arduboy2 Notes
 

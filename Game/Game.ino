@@ -5,55 +5,44 @@ Arduboy2 arduboy;
 constexpr uint8_t PLAYER_SIZE = 5;
 constexpr uint8_t TARGET_SIZE = 3;
 
-int8_t playerX = (WIDTH - PLAYER_SIZE) / 2;
-int8_t playerY = (HEIGHT - PLAYER_SIZE) / 2;
-uint8_t targetX = 20;
-uint8_t targetY = 20;
-uint16_t score = 0;
+constexpr uint8_t RUST_LEFT_BUTTON = 1 << 0;
+constexpr uint8_t RUST_RIGHT_BUTTON = 1 << 1;
+constexpr uint8_t RUST_UP_BUTTON = 1 << 2;
+constexpr uint8_t RUST_DOWN_BUTTON = 1 << 3;
+constexpr uint8_t RUST_A_BUTTON = 1 << 4;
+constexpr uint8_t RUST_B_BUTTON = 1 << 5;
 
-void placeTarget() {
-  targetX = random(0, WIDTH - TARGET_SIZE);
-  targetY = random(9, HEIGHT - TARGET_SIZE);
-}
+struct GameState {
+  uint8_t playerX;
+  uint8_t playerY;
+  uint8_t targetX;
+  uint8_t targetY;
+  uint16_t score;
+};
+
+extern "C" void game_init(uint16_t seed, GameState *state);
+extern "C" void game_update(uint8_t buttons, GameState *state);
+
+GameState game;
 
 void setup() {
   arduboy.begin();
   arduboy.setFrameRate(30);
   arduboy.initRandomSeed();
-  placeTarget();
+  game_init(random(), &game);
 }
 
-void updateGame() {
-  if (arduboy.pressed(LEFT_BUTTON) && playerX > 0) {
-    --playerX;
-  }
+uint8_t readButtons() {
+  uint8_t buttons = 0;
 
-  if (arduboy.pressed(RIGHT_BUTTON) && playerX < WIDTH - PLAYER_SIZE) {
-    ++playerX;
-  }
+  if (arduboy.pressed(LEFT_BUTTON)) buttons |= RUST_LEFT_BUTTON;
+  if (arduboy.pressed(RIGHT_BUTTON)) buttons |= RUST_RIGHT_BUTTON;
+  if (arduboy.pressed(UP_BUTTON)) buttons |= RUST_UP_BUTTON;
+  if (arduboy.pressed(DOWN_BUTTON)) buttons |= RUST_DOWN_BUTTON;
+  if (arduboy.pressed(A_BUTTON)) buttons |= RUST_A_BUTTON;
+  if (arduboy.pressed(B_BUTTON)) buttons |= RUST_B_BUTTON;
 
-  if (arduboy.pressed(UP_BUTTON) && playerY > 9) {
-    --playerY;
-  }
-
-  if (arduboy.pressed(DOWN_BUTTON) && playerY < HEIGHT - PLAYER_SIZE) {
-    ++playerY;
-  }
-
-  if (arduboy.justPressed(B_BUTTON)) {
-    score = 0;
-    playerX = (WIDTH - PLAYER_SIZE) / 2;
-    playerY = (HEIGHT - PLAYER_SIZE) / 2;
-    placeTarget();
-  }
-
-  Rect player = { playerX, playerY, PLAYER_SIZE, PLAYER_SIZE };
-  Rect target = { targetX, targetY, TARGET_SIZE, TARGET_SIZE };
-
-  if (arduboy.collide(player, target)) {
-    ++score;
-    placeTarget();
-  }
+  return buttons;
 }
 
 void drawGame() {
@@ -61,11 +50,11 @@ void drawGame() {
 
   arduboy.setCursor(0, 0);
   arduboy.print(F("Score "));
-  arduboy.print(score);
+  arduboy.print(game.score);
 
   arduboy.drawFastHLine(0, 8, WIDTH);
-  arduboy.fillRect(targetX, targetY, TARGET_SIZE, TARGET_SIZE);
-  arduboy.drawRect(playerX, playerY, PLAYER_SIZE, PLAYER_SIZE);
+  arduboy.fillRect(game.targetX, game.targetY, TARGET_SIZE, TARGET_SIZE);
+  arduboy.drawRect(game.playerX, game.playerY, PLAYER_SIZE, PLAYER_SIZE);
 
   arduboy.display();
 }
@@ -75,7 +64,6 @@ void loop() {
     return;
   }
 
-  arduboy.pollButtons();
-  updateGame();
+  game_update(readButtons(), &game);
   drawGame();
 }

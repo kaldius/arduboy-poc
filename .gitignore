@@ -1,4 +1,5 @@
 build/
+rust_game/target/
 *.hex
 *.elf
 *.bin
