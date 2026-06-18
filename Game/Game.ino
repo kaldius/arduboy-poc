@@ -11,6 +11,7 @@ extern "C" void infestation_press_a();
 extern "C" void infestation_press_b();
 extern "C" void infestation_press_ab();
 extern "C" void infestation_press_up_down();
+extern "C" void infestation_press_left_right();
 extern "C" void infestation_render(uint8_t *framebuffer, uint16_t length);
 
 void setup() {
@@ -37,6 +38,16 @@ void dispatchButtonPresses() {
 
   if (upDownPressed && upDownJustPressed) {
     infestation_press_up_down();
+    return;
+  }
+
+  const bool leftRightPressed =
+      arduboy.pressed(LEFT_BUTTON) && arduboy.pressed(RIGHT_BUTTON);
+  const bool leftRightJustPressed =
+      arduboy.justPressed(LEFT_BUTTON) || arduboy.justPressed(RIGHT_BUTTON);
+
+  if (leftRightPressed && leftRightJustPressed) {
+    infestation_press_left_right();
     return;
   }
 

@@ -21,7 +21,13 @@ pub(crate) fn render(app: &App, framebuffer: &mut [u8]) {
             match game.cell(position) {
                 Cell::Empty => {}
                 Cell::Wall => draw_wall(framebuffer, screen_x, screen_y),
-                Cell::Portal => draw_portal(framebuffer, screen_x, screen_y),
+                Cell::Portal => draw_portal(
+                    framebuffer,
+                    screen_x,
+                    screen_y,
+                    game.portal_destination_at(position)
+                        .is_some_and(|level| app.is_completed(level)),
+                ),
                 Cell::Player => {
                     draw_player(framebuffer, screen_x, screen_y, game.player_direction())
                 }
@@ -113,7 +119,7 @@ fn draw_rat(framebuffer: &mut [u8], x: i16, y: i16, direction: Direction) {
     );
 }
 
-fn draw_portal(framebuffer: &mut [u8], x: i16, y: i16) {
+fn draw_portal(framebuffer: &mut [u8], x: i16, y: i16, completed: bool) {
     for inset in [1, 3, 5] {
         let size = TILE_SIZE - inset * 2;
         for px in x + inset..x + inset + size {
@@ -123,6 +129,15 @@ fn draw_portal(framebuffer: &mut [u8], x: i16, y: i16) {
         for py in y + inset..y + inset + size {
             set_pixel(framebuffer, x + inset, py);
             set_pixel(framebuffer, x + inset + size - 1, py);
+        }
+    }
+    if completed {
+        for offset in 2..10 {
+            set_pixel(framebuffer, x + offset, y + 9);
+        }
+        for offset in 0..4 {
+            set_pixel(framebuffer, x + 3 + offset, y + 6 + offset);
+            set_pixel(framebuffer, x + 7 + offset, y + 9 - offset);
         }
     }
 }

@@ -41,6 +41,19 @@ pub(crate) enum LevelId {
     Webs,
 }
 
+impl LevelId {
+    pub(crate) const fn completion_mask(self) -> u8 {
+        match self {
+            Self::Intro => 0,
+            Self::Rats => 1 << 0,
+            Self::MoreRats => 1 << 1,
+            Self::TrappedRat => 1 << 2,
+            Self::TrappedRat2 => 1 << 3,
+            Self::Webs => 1 << 4,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct Portal {
     pub(crate) position: Position,

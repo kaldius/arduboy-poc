@@ -53,6 +53,11 @@ pub extern "C" fn infestation_press_b() {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn infestation_press_left_right() {
+    with_app_mut(App::undo);
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn infestation_press_ab() {
     with_app_mut(App::toggle_camera_mode);
 }

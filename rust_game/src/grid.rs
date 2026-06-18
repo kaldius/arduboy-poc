@@ -15,6 +15,7 @@ pub(crate) enum Cell {
     Web,
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct Grid {
     cells: [Cell; MAX_CELL_COUNT],
     width: u8,

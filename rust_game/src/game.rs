@@ -28,6 +28,7 @@ impl Rat {
     };
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct Game {
     level_id: LevelId,
     grid: Grid,
@@ -132,10 +133,19 @@ impl Game {
     }
 
     pub(crate) fn portal_destination(&self) -> Option<LevelId> {
+        self.portal_destination_at(self.player_position)
+    }
+
+    pub(crate) fn portal_destination_at(&self, position: Position) -> Option<LevelId> {
         self.portals[..self.portal_count as usize]
             .iter()
-            .find(|portal| portal.position == self.player_position)
+            .find(|portal| portal.position == position)
             .map(|portal| portal.destination)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn force_win(&mut self) {
+        self.state = PlayState::Won;
     }
 
     #[cfg(feature = "scenario-harness")]

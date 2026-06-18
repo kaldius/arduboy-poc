@@ -14,6 +14,7 @@ directly into Arduboy2's framebuffer.
 - B: restart the level
 - A+B: toggle camera mode; while active, the D-pad scrolls without taking turns.
   Press A+B again to return the camera to the player.
+- Left+Right: undo one turn in an active puzzle.
 - In the intro, stand on the portal above the player and press A to enter the
   Rats level.
 - Continue two cells north to the next portal and press A to enter More Rats.

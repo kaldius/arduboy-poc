@@ -11,8 +11,17 @@ pub(crate) enum InputMode {
 
 pub(crate) struct App {
     game: Game,
+    undo: Undo,
     camera: Camera,
     input_mode: InputMode,
+    completed_levels: u8,
+}
+
+#[derive(Clone, Copy)]
+struct Undo {
+    available: bool,
+    game: Game,
+    completed_levels: u8,
 }
 
 impl App {
@@ -21,13 +30,20 @@ impl App {
         let camera = Camera::following(game.player_position(), game.width(), game.height());
         Self {
             game,
+            undo: Undo {
+                available: false,
+                game,
+                completed_levels: 0,
+            },
             camera,
             input_mode: InputMode::Player,
+            completed_levels: 0,
         }
     }
 
     pub(crate) fn restart(&mut self) {
         self.game.restart();
+        self.clear_undo();
         self.reset_camera();
         self.input_mode = InputMode::Player;
     }
@@ -35,7 +51,9 @@ impl App {
     pub(crate) fn press_direction(&mut self, direction: Direction) {
         match self.input_mode {
             InputMode::Player => {
+                self.save_undo_for_active_puzzle();
                 self.game.act(Some(direction));
+                self.record_completion();
                 self.camera.follow(self.game.player_position());
             }
             InputMode::Camera => self.camera.scroll(direction),
@@ -50,7 +68,9 @@ impl App {
         if let Some(destination) = self.game.portal_destination() {
             self.load_level(destination);
         } else {
+            self.save_undo_for_active_puzzle();
             self.game.act(None);
+            self.record_completion();
             self.camera.follow(self.game.player_position());
         }
     }
@@ -58,6 +78,18 @@ impl App {
     pub(crate) fn press_b(&mut self) {
         if self.input_mode == InputMode::Player {
             self.restart();
+        }
+    }
+
+    pub(crate) fn undo(&mut self) {
+        if self.input_mode == InputMode::Player
+            && self.game.level_id() != LevelId::Intro
+            && self.undo.available
+        {
+            self.game = self.undo.game;
+            self.completed_levels = self.undo.completed_levels;
+            self.undo.available = false;
+            self.reset_camera();
         }
     }
 
@@ -91,6 +123,7 @@ impl App {
 
     fn load_level(&mut self, level_id: LevelId) {
         self.game.load(level_id);
+        self.clear_undo();
         self.reset_camera();
         self.input_mode = InputMode::Player;
     }
@@ -101,6 +134,30 @@ impl App {
             self.game.width(),
             self.game.height(),
         );
+    }
+
+    fn save_undo_for_active_puzzle(&mut self) {
+        if self.game.level_id() != LevelId::Intro {
+            self.undo = Undo {
+                available: true,
+                game: self.game,
+                completed_levels: self.completed_levels,
+            };
+        }
+    }
+
+    fn clear_undo(&mut self) {
+        self.undo.available = false;
+    }
+
+    fn record_completion(&mut self) {
+        if self.game.state() == crate::game::PlayState::Won {
+            self.completed_levels |= self.game.level_id().completion_mask();
+        }
+    }
+
+    pub(crate) fn is_completed(&self, level_id: LevelId) -> bool {
+        self.completed_levels & level_id.completion_mask() != 0
     }
 }
 
@@ -236,5 +293,45 @@ mod tests {
 
         assert_eq!(app.game.level_id(), LevelId::Intro);
         assert_eq!(app.game.player_position(), Position::new(4, 10));
+    }
+
+    #[test]
+    fn undo_restores_previous_puzzle_state() {
+        let mut app = App::new();
+        app.load_level(LevelId::Rats);
+
+        let before = app.game.player_position();
+        app.press_direction(Direction::East);
+        assert_ne!(app.game.player_position(), before);
+
+        app.undo();
+
+        assert_eq!(app.game.player_position(), before);
+    }
+
+    #[test]
+    fn completed_level_portal_is_tracked() {
+        let mut app = App::new();
+        app.load_level(LevelId::Rats);
+        assert!(!app.is_completed(LevelId::Rats));
+
+        app.game.force_win();
+        app.record_completion();
+
+        assert!(app.is_completed(LevelId::Rats));
+    }
+
+    #[test]
+    fn undo_reverts_completion_from_winning_turn() {
+        let mut app = App::new();
+        app.load_level(LevelId::Rats);
+        app.save_undo_for_active_puzzle();
+        app.game.force_win();
+        app.record_completion();
+        assert!(app.is_completed(LevelId::Rats));
+
+        app.undo();
+
+        assert!(!app.is_completed(LevelId::Rats));
     }
 }
