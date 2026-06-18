@@ -1,23 +1,22 @@
+use crate::app::{App, InputMode};
+use crate::camera::{SCREEN_HEIGHT, SCREEN_WIDTH, TILE_SIZE};
 use crate::direction::Direction;
-use crate::game::{Game, PlayState};
+use crate::game::PlayState;
 use crate::grid::{Cell, HEIGHT as GRID_HEIGHT, WIDTH as GRID_WIDTH};
 use crate::position::Position;
 
-const SCREEN_WIDTH: usize = 128;
-const SCREEN_HEIGHT: usize = 64;
-pub(crate) const FRAMEBUFFER_SIZE: usize = SCREEN_WIDTH * SCREEN_HEIGHT / 8;
+pub(crate) const FRAMEBUFFER_SIZE: usize = SCREEN_WIDTH as usize * SCREEN_HEIGHT as usize / 8;
 
-const TILE_SIZE: i8 = 8;
-const GRID_X: i8 = 40;
-
-pub(crate) fn render(game: &Game, framebuffer: &mut [u8]) {
+pub(crate) fn render(app: &App, framebuffer: &mut [u8]) {
     framebuffer.fill(0);
+    let game = app.game();
+    let camera = app.camera();
 
     for y in 0..GRID_HEIGHT {
         for x in 0..GRID_WIDTH {
             let position = Position::new(x as i8, y as i8);
-            let screen_x = GRID_X + position.x * TILE_SIZE;
-            let screen_y = position.y * TILE_SIZE;
+            let screen_x = i16::from(position.x) * TILE_SIZE - camera.x;
+            let screen_y = i16::from(position.y) * TILE_SIZE - camera.y;
 
             match game.cell(position) {
                 Cell::Empty => {}
@@ -35,23 +34,27 @@ pub(crate) fn render(game: &Game, framebuffer: &mut [u8]) {
         PlayState::Won => draw_status(framebuffer, true),
         PlayState::GameOver => draw_status(framebuffer, false),
     }
+
+    if app.input_mode() == InputMode::Camera {
+        draw_camera_mode_indicator(framebuffer);
+    }
 }
 
-fn set_pixel(framebuffer: &mut [u8], x: i8, y: i8) {
+fn set_pixel(framebuffer: &mut [u8], x: i16, y: i16) {
     if x < 0 || y < 0 {
         return;
     }
 
     let x = x as usize;
     let y = y as usize;
-    if x >= SCREEN_WIDTH || y >= SCREEN_HEIGHT {
+    if x >= SCREEN_WIDTH as usize || y >= SCREEN_HEIGHT as usize {
         return;
     }
 
-    framebuffer[(y / 8) * SCREEN_WIDTH + x] |= 1 << (y & 7);
+    framebuffer[(y / 8) * SCREEN_WIDTH as usize + x] |= 1 << (y & 7);
 }
 
-fn fill_rect(framebuffer: &mut [u8], x: i8, y: i8, width: i8, height: i8) {
+fn fill_rect(framebuffer: &mut [u8], x: i16, y: i16, width: i16, height: i16) {
     for py in y..y + height {
         for px in x..x + width {
             set_pixel(framebuffer, px, py);
@@ -59,29 +62,48 @@ fn fill_rect(framebuffer: &mut [u8], x: i8, y: i8, width: i8, height: i8) {
     }
 }
 
-fn draw_wall(framebuffer: &mut [u8], x: i8, y: i8) {
+fn draw_wall(framebuffer: &mut [u8], x: i16, y: i16) {
     fill_rect(framebuffer, x, y, TILE_SIZE, TILE_SIZE);
-    for offset in [1, 5] {
+    for offset in [2, 8] {
         for px in x..x + TILE_SIZE {
-            let index = ((y + offset) as usize / 8) * SCREEN_WIDTH + px as usize;
-            framebuffer[index] &= !(1 << ((y + offset) & 7));
+            clear_pixel(framebuffer, px, y + offset);
         }
     }
 }
 
-fn draw_player(framebuffer: &mut [u8], x: i8, y: i8, direction: Direction) {
-    fill_rect(framebuffer, x + 2, y + 2, 4, 4);
-    let (dx, dy) = direction.delta();
-    set_pixel(framebuffer, x + 4 + dx * 3, y + 4 + dy * 3);
-    set_pixel(framebuffer, x + 4 + dx * 2, y + 4 + dy * 2);
+fn clear_pixel(framebuffer: &mut [u8], x: i16, y: i16) {
+    if x < 0 || y < 0 {
+        return;
+    }
+
+    let x = x as usize;
+    let y = y as usize;
+    if x >= SCREEN_WIDTH as usize || y >= SCREEN_HEIGHT as usize {
+        return;
+    }
+
+    framebuffer[(y / 8) * SCREEN_WIDTH as usize + x] &= !(1 << (y & 7));
 }
 
-fn draw_rat(framebuffer: &mut [u8], x: i8, y: i8, direction: Direction) {
-    fill_rect(framebuffer, x + 2, y + 3, 4, 3);
-    set_pixel(framebuffer, x + 2, y + 2);
-    set_pixel(framebuffer, x + 5, y + 2);
+fn draw_player(framebuffer: &mut [u8], x: i16, y: i16, direction: Direction) {
+    fill_rect(framebuffer, x + 3, y + 3, 6, 6);
     let (dx, dy) = direction.delta();
-    set_pixel(framebuffer, x + 4 + dx * 2, y + 4 + dy * 2);
+    let dx = i16::from(dx);
+    let dy = i16::from(dy);
+    set_pixel(framebuffer, x + 6 + dx * 5, y + 6 + dy * 5);
+    set_pixel(framebuffer, x + 6 + dx * 4, y + 6 + dy * 4);
+}
+
+fn draw_rat(framebuffer: &mut [u8], x: i16, y: i16, direction: Direction) {
+    fill_rect(framebuffer, x + 3, y + 5, 6, 4);
+    set_pixel(framebuffer, x + 3, y + 3);
+    set_pixel(framebuffer, x + 8, y + 3);
+    let (dx, dy) = direction.delta();
+    set_pixel(
+        framebuffer,
+        x + 6 + i16::from(dx) * 4,
+        y + 6 + i16::from(dy) * 4,
+    );
 }
 
 fn draw_status(framebuffer: &mut [u8], won: bool) {
@@ -97,15 +119,48 @@ fn draw_status(framebuffer: &mut [u8], won: bool) {
     }
 }
 
+fn draw_camera_mode_indicator(framebuffer: &mut [u8]) {
+    for x in 1..9 {
+        set_pixel(framebuffer, x, 1);
+        set_pixel(framebuffer, x, 8);
+    }
+    for y in 1..9 {
+        set_pixel(framebuffer, 1, y);
+        set_pixel(framebuffer, 8, y);
+    }
+    set_pixel(framebuffer, 4, 3);
+    set_pixel(framebuffer, 5, 3);
+    set_pixel(framebuffer, 3, 4);
+    set_pixel(framebuffer, 6, 4);
+    set_pixel(framebuffer, 3, 5);
+    set_pixel(framebuffer, 6, 5);
+    set_pixel(framebuffer, 4, 6);
+    set_pixel(framebuffer, 5, 6);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn render_writes_a_single_arduboy_framebuffer() {
-        let game = Game::new();
+        let app = App::new();
         let mut framebuffer = [0; FRAMEBUFFER_SIZE];
-        render(&game, &mut framebuffer);
+        render(&app, &mut framebuffer);
         assert!(framebuffer.iter().any(|&byte| byte != 0));
+    }
+
+    #[test]
+    fn scrolling_changes_the_rendered_frame() {
+        let mut app = App::new();
+        let mut before = [0; FRAMEBUFFER_SIZE];
+        let mut after = [0; FRAMEBUFFER_SIZE];
+
+        render(&app, &mut before);
+        app.toggle_camera_mode();
+        app.press_direction(Direction::North);
+        render(&app, &mut after);
+
+        assert_ne!(before, after);
     }
 }

@@ -1,5 +1,7 @@
 #![cfg_attr(not(test), no_std)]
 
+mod app;
+mod camera;
 mod direction;
 mod ffi;
 mod game;

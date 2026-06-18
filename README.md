@@ -12,6 +12,8 @@ directly into Arduboy2's framebuffer.
 - D-pad: move and face the player, then resolve the rat's turn
 - A: stall for one turn
 - B: restart the level
+- A+B: toggle camera mode; while active, the D-pad scrolls without taking turns.
+  Press A+B again to return the camera to the player.
 
 ## Toolchain
 

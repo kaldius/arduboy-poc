@@ -62,12 +62,21 @@ impl Game {
         self.player_direction
     }
 
+    pub(crate) const fn player_position(&self) -> Position {
+        self.player_position
+    }
+
     pub(crate) fn rat_direction(&self) -> Direction {
         self.rat_direction
     }
 
     pub(crate) fn state(&self) -> PlayState {
         self.state
+    }
+
+    #[cfg(test)]
+    pub(crate) fn rat_position(&self) -> Option<Position> {
+        self.rat_position
     }
 
     fn move_player(&mut self, direction: Direction) {
