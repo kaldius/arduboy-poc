@@ -47,8 +47,8 @@ impl App {
             return;
         }
 
-        if self.game.level_id() == LevelId::Intro && self.game.is_on_portal() {
-            self.load_level(LevelId::Rats);
+        if let Some(destination) = self.game.portal_destination() {
+            self.load_level(destination);
         } else {
             self.game.act(None);
             self.camera.follow(self.game.player_position());
@@ -167,12 +167,26 @@ mod tests {
     fn a_enters_rats_level_from_intro_portal() {
         let mut app = App::new();
         app.press_direction(Direction::North);
-        assert!(app.game.is_on_portal());
+        assert_eq!(app.game.portal_destination(), Some(LevelId::Rats));
 
         app.press_a();
 
         assert_eq!(app.game.level_id(), LevelId::Rats);
         assert_eq!(app.game.player_position(), Position::new(3, 6));
+    }
+
+    #[test]
+    fn a_enters_more_rats_from_second_intro_portal() {
+        let mut app = App::new();
+        app.press_direction(Direction::North);
+        app.press_direction(Direction::North);
+        app.press_direction(Direction::North);
+        assert_eq!(app.game.portal_destination(), Some(LevelId::MoreRats));
+
+        app.press_a();
+
+        assert_eq!(app.game.level_id(), LevelId::MoreRats);
+        assert_eq!(app.game.player_position(), Position::new(3, 5));
     }
 
     #[test]

@@ -2,7 +2,7 @@ use crate::direction::Direction;
 #[cfg(feature = "scenario-harness")]
 use crate::grid::MAX_CELL_COUNT;
 use crate::grid::{Cell, Grid};
-use crate::level::{self, LevelId, MAX_RATS};
+use crate::level::{self, LevelId, Portal, MAX_PORTALS, MAX_RATS};
 use crate::position::Position;
 
 #[repr(u8)]
@@ -35,7 +35,8 @@ pub(crate) struct Game {
     player_direction: Direction,
     rats: [Rat; MAX_RATS],
     initial_rat_count: u8,
-    portal_position: Option<Position>,
+    portals: [Portal; MAX_PORTALS],
+    portal_count: u8,
     state: PlayState,
 }
 
@@ -60,7 +61,8 @@ impl Game {
             player_direction: level.player_direction,
             rats,
             initial_rat_count: level.rat_count,
-            portal_position: level.portal_position,
+            portals: level.portals,
+            portal_count: level.portal_count,
             state: PlayState::Playing,
         }
     }
@@ -129,8 +131,11 @@ impl Game {
         self.grid.height()
     }
 
-    pub(crate) fn is_on_portal(&self) -> bool {
-        self.portal_position == Some(self.player_position)
+    pub(crate) fn portal_destination(&self) -> Option<LevelId> {
+        self.portals[..self.portal_count as usize]
+            .iter()
+            .find(|portal| portal.position == self.player_position)
+            .map(|portal| portal.destination)
     }
 
     #[cfg(feature = "scenario-harness")]
@@ -160,7 +165,11 @@ impl Game {
             player_direction,
             rats,
             initial_rat_count: rat_count,
-            portal_position: None,
+            portals: [Portal {
+                position: Position::new(0, 0),
+                destination: LevelId::Intro,
+            }; MAX_PORTALS],
+            portal_count: 0,
             state: PlayState::Playing,
         }
     }
@@ -286,7 +295,10 @@ impl Game {
     }
 
     fn restore_underlying_cell(&mut self, position: Position) {
-        let cell = if self.portal_position == Some(position) {
+        let cell = if self.portals[..self.portal_count as usize]
+            .iter()
+            .any(|portal| portal.position == position)
+        {
             Cell::Portal
         } else {
             Cell::Empty
@@ -347,6 +359,15 @@ mod tests {
     }
 
     #[test]
+    fn more_rats_level_matches_original_layout() {
+        let game = Game::new(LevelId::MoreRats);
+        assert_eq!((game.width(), game.height()), (7, 7));
+        assert_eq!(game.player_position, Position::new(3, 5));
+        assert_eq!(game.rat_count(), 12);
+        assert_eq!(game.grid.count(Cell::Wall), 12);
+    }
+
+    #[test]
     fn intro_rats_take_turns() {
         let mut game = Game::new(LevelId::Intro);
         game.act(None);
@@ -371,7 +392,7 @@ mod tests {
         let portal = Position::new(4, 9);
 
         game.act(Some(Direction::North));
-        assert!(game.is_on_portal());
+        assert_eq!(game.portal_destination(), Some(LevelId::Rats));
         game.act(Some(Direction::South));
 
         assert_eq!(game.cell(portal), Cell::Portal);

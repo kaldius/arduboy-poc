@@ -16,7 +16,8 @@ directly into Arduboy2's framebuffer.
   Press A+B again to return the camera to the player.
 - In the intro, stand on the portal above the player and press A to enter the
   Rats level.
-- Up+Down: exit the Rats level and return to the intro.
+- Continue two cells north to the next portal and press A to enter More Rats.
+- Up+Down: exit the active puzzle and return to the intro.
 
 ## Toolchain
 

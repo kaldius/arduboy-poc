@@ -7,7 +7,8 @@ const W: Cell = Cell::Wall;
 const O: Cell = Cell::Portal;
 const P: Cell = Cell::Player;
 const R: Cell = Cell::Rat;
-pub(crate) const MAX_RATS: usize = 4;
+pub(crate) const MAX_RATS: usize = 12;
+pub(crate) const MAX_PORTALS: usize = 2;
 
 #[derive(Clone, Copy)]
 pub(crate) struct RatSpawn {
@@ -33,6 +34,27 @@ impl RatSpawn {
 pub(crate) enum LevelId {
     Intro,
     Rats,
+    MoreRats,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct Portal {
+    pub(crate) position: Position,
+    pub(crate) destination: LevelId,
+}
+
+impl Portal {
+    const EMPTY: Self = Self {
+        position: Position::new(0, 0),
+        destination: LevelId::Intro,
+    };
+
+    const fn new(position: Position, destination: LevelId) -> Self {
+        Self {
+            position,
+            destination,
+        }
+    }
 }
 
 pub(crate) struct Level {
@@ -42,13 +64,15 @@ pub(crate) struct Level {
     pub(crate) player_direction: Direction,
     pub(crate) rats: [RatSpawn; MAX_RATS],
     pub(crate) rat_count: u8,
-    pub(crate) portal_position: Option<Position>,
+    pub(crate) portals: [Portal; MAX_PORTALS],
+    pub(crate) portal_count: u8,
 }
 
 pub(crate) const fn load(id: LevelId) -> Level {
     match id {
         LevelId::Intro => intro(),
         LevelId::Rats => rats(),
+        LevelId::MoreRats => more_rats(),
     }
 }
 
@@ -63,7 +87,7 @@ const fn intro() -> Level {
         W, E, E, W, E, W, E, E, E, //
         W, E, E, W, E, W, E, E, E, //
         W, E, E, W, E, W, W, W, W, //
-        E, E, E, W, E, E, E, E, E, //
+        E, E, E, W, O, E, E, E, E, //
         E, W, W, W, E, W, W, W, E, //
         E, W, R, W, O, W, R, W, E, //
         E, W, W, W, P, W, E, E, E, //
@@ -79,9 +103,21 @@ const fn intro() -> Level {
             RatSpawn::new(Position::new(2, 9), Direction::Southeast),
             RatSpawn::new(Position::new(6, 9), Direction::Southwest),
             RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
         ],
         rat_count: 3,
-        portal_position: Some(Position::new(4, 9)),
+        portals: [
+            Portal::new(Position::new(4, 9), LevelId::Rats),
+            Portal::new(Position::new(4, 7), LevelId::MoreRats),
+        ],
+        portal_count: 2,
     }
 }
 
@@ -107,9 +143,54 @@ const fn rats() -> Level {
             RatSpawn::EMPTY,
             RatSpawn::EMPTY,
             RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
         ],
         rat_count: 1,
-        portal_position: None,
+        portals: [Portal::EMPTY; MAX_PORTALS],
+        portal_count: 0,
+    }
+}
+
+const fn more_rats() -> Level {
+    let source = [
+        E, E, E, E, E, W, R, //
+        R, W, E, E, E, W, R, //
+        R, W, E, E, E, W, R, //
+        R, W, E, E, E, W, R, //
+        R, W, E, E, E, W, R, //
+        R, W, E, P, E, W, R, //
+        R, W, E, E, E, E, E, //
+    ];
+
+    Level {
+        id: LevelId::MoreRats,
+        grid: Grid::new(7, 7, pad_cells(source)),
+        player_position: Position::new(3, 5),
+        player_direction: Direction::North,
+        rats: [
+            RatSpawn::new(Position::new(6, 0), Direction::Southwest),
+            RatSpawn::new(Position::new(0, 1), Direction::Southeast),
+            RatSpawn::new(Position::new(6, 1), Direction::Southwest),
+            RatSpawn::new(Position::new(0, 2), Direction::Southeast),
+            RatSpawn::new(Position::new(6, 2), Direction::Southwest),
+            RatSpawn::new(Position::new(0, 3), Direction::Southeast),
+            RatSpawn::new(Position::new(6, 3), Direction::Southwest),
+            RatSpawn::new(Position::new(0, 4), Direction::Southeast),
+            RatSpawn::new(Position::new(6, 4), Direction::Southwest),
+            RatSpawn::new(Position::new(0, 5), Direction::East),
+            RatSpawn::new(Position::new(6, 5), Direction::West),
+            RatSpawn::new(Position::new(0, 6), Direction::Northeast),
+        ],
+        rat_count: 12,
+        portals: [Portal::EMPTY; MAX_PORTALS],
+        portal_count: 0,
     }
 }
 
