@@ -212,6 +212,20 @@ mod tests {
     }
 
     #[test]
+    fn a_enters_webs_portal() {
+        let mut app = App::new();
+        for _ in 0..5 {
+            app.press_direction(Direction::North);
+        }
+        assert_eq!(app.game.portal_destination(), Some(LevelId::Webs));
+
+        app.press_a();
+
+        assert_eq!(app.game.level_id(), LevelId::Webs);
+        assert_eq!(app.game.player_position(), Position::new(2, 6));
+    }
+
+    #[test]
     fn up_down_chord_returns_to_intro() {
         let mut app = App::new();
         app.press_direction(Direction::North);

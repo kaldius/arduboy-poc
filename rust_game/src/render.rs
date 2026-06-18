@@ -31,6 +31,7 @@ pub(crate) fn render(app: &App, framebuffer: &mut [u8]) {
                     screen_y,
                     game.rat_direction_at(position),
                 ),
+                Cell::Web => draw_web(framebuffer, screen_x, screen_y),
             }
         }
     }
@@ -123,6 +124,17 @@ fn draw_portal(framebuffer: &mut [u8], x: i16, y: i16) {
             set_pixel(framebuffer, x + inset, py);
             set_pixel(framebuffer, x + inset + size - 1, py);
         }
+    }
+}
+
+fn draw_web(framebuffer: &mut [u8], x: i16, y: i16) {
+    for offset in 1..TILE_SIZE - 1 {
+        set_pixel(framebuffer, x + offset, y + offset);
+        set_pixel(framebuffer, x + TILE_SIZE - 1 - offset, y + offset);
+    }
+    for offset in [2, 6, 9] {
+        set_pixel(framebuffer, x + offset, y + TILE_SIZE / 2);
+        set_pixel(framebuffer, x + TILE_SIZE / 2, y + offset);
     }
 }
 

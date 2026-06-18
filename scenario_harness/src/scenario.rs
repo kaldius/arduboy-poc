@@ -78,6 +78,7 @@ pub fn run(before: &str, action: Action) -> Result<Outcome, Error> {
             let cell = match *symbol {
                 "." => Cell::Empty,
                 "#" => Cell::Wall,
+                "w" => Cell::Web,
                 "R" => {
                     if rat_count == MAX_RATS {
                         return Err(Error::Unsupported(format!("more than {MAX_RATS} rats")));
@@ -161,6 +162,7 @@ fn to_csv(game: &Game) -> String {
                 Cell::Empty => ".",
                 Cell::Wall => "#",
                 Cell::Rat => "R",
+                Cell::Web => "w",
                 Cell::Player => match game.player_direction() {
                     Direction::North => "▲",
                     Direction::South => "▼",

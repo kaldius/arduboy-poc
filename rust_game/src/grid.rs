@@ -1,6 +1,6 @@
 use crate::position::Position;
 
-pub(crate) const MAX_WIDTH: usize = 10;
+pub(crate) const MAX_WIDTH: usize = 12;
 pub(crate) const MAX_HEIGHT: usize = 13;
 pub(crate) const MAX_CELL_COUNT: usize = MAX_WIDTH * MAX_HEIGHT;
 
@@ -12,6 +12,7 @@ pub(crate) enum Cell {
     Portal,
     Player,
     Rat,
+    Web,
 }
 
 pub(crate) struct Grid {

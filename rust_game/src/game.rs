@@ -252,7 +252,7 @@ impl Game {
 
         for direction in directions.into_iter().flatten() {
             let destination = rat_position.offset(direction);
-            if matches!(self.cell(destination), Cell::Wall | Cell::Rat) {
+            if matches!(self.cell(destination), Cell::Wall | Cell::Rat | Cell::Web) {
                 continue;
             }
 
@@ -376,6 +376,38 @@ mod tests {
             assert_eq!(game.rat_count(), 13);
             assert_eq!(game.grid.count(Cell::Wall), wall_count);
         }
+    }
+
+    #[test]
+    fn webs_level_matches_original_layout() {
+        let game = Game::new(LevelId::Webs);
+        assert_eq!((game.width(), game.height()), (12, 8));
+        assert_eq!(game.player_position, Position::new(2, 6));
+        assert_eq!(game.rat_count(), 9);
+        assert_eq!(game.grid.count(Cell::Web), 62);
+    }
+
+    #[test]
+    fn player_destroys_web_and_rat_cannot_enter_it() {
+        let mut game = Game::new(LevelId::Webs);
+        game.grid.fill(Cell::Empty);
+        game.player_position = Position::new(1, 1);
+        game.player_direction = Direction::East;
+        game.rats = [Rat::EMPTY; MAX_RATS];
+        game.rats[0] = Rat {
+            position: Position::new(3, 1),
+            direction: Direction::West,
+            alive: true,
+        };
+        game.initial_rat_count = 1;
+        game.grid.set_cell(game.player_position, Cell::Player);
+        game.grid.set_cell(Position::new(2, 1), Cell::Web);
+        game.grid.set_cell(game.rats[0].position, Cell::Rat);
+
+        game.act(Some(Direction::East));
+
+        assert_eq!(game.player_position, Position::new(2, 1));
+        assert_eq!(game.rats[0].position, Position::new(3, 1));
     }
 
     #[test]

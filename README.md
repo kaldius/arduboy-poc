@@ -19,6 +19,7 @@ directly into Arduboy2's framebuffer.
 - Continue two cells north to the next portal and press A to enter More Rats.
 - The two portals immediately east of More Rats enter Trapped Rat and
   Trapped Rat 2.
+- Continue north from More Rats to enter Webs.
 - Up+Down: exit the active puzzle and return to the intro.
 
 ## Toolchain
