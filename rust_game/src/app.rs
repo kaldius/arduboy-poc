@@ -76,9 +76,7 @@ impl App {
     }
 
     pub(crate) fn press_b(&mut self) {
-        if self.input_mode == InputMode::Player {
-            self.restart();
-        }
+        self.undo();
     }
 
     pub(crate) fn undo(&mut self) {
@@ -206,9 +204,11 @@ mod tests {
     }
 
     #[test]
-    fn camera_mode_suppresses_stall_and_restart() {
+    fn camera_mode_suppresses_stall_and_undo() {
         let mut app = App::new();
-        app.press_direction(Direction::North);
+        app.load_level(LevelId::Rats);
+        let initial_position = app.game.player_position();
+        app.press_direction(Direction::East);
         let player_before = app.game.player_position();
 
         app.toggle_camera_mode();
@@ -217,7 +217,7 @@ mod tests {
 
         assert_eq!(app.input_mode, InputMode::Camera);
         assert_eq!(app.game.player_position(), player_before);
-        assert_ne!(player_before, Position::new(4, 10));
+        assert_ne!(player_before, initial_position);
     }
 
     #[test]
@@ -305,6 +305,20 @@ mod tests {
         assert_ne!(app.game.player_position(), before);
 
         app.undo();
+
+        assert_eq!(app.game.player_position(), before);
+    }
+
+    #[test]
+    fn b_undoes_previous_puzzle_turn() {
+        let mut app = App::new();
+        app.load_level(LevelId::Rats);
+
+        let before = app.game.player_position();
+        app.press_direction(Direction::East);
+        assert_ne!(app.game.player_position(), before);
+
+        app.press_b();
 
         assert_eq!(app.game.player_position(), before);
     }

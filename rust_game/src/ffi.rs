@@ -54,7 +54,7 @@ pub extern "C" fn infestation_press_b() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn infestation_press_left_right() {
-    with_app_mut(App::undo);
+    with_app_mut(App::restart);
 }
 
 #[unsafe(no_mangle)]
