@@ -190,6 +190,28 @@ mod tests {
     }
 
     #[test]
+    fn a_enters_both_trapped_rat_portals() {
+        let mut app = App::new();
+        for _ in 0..3 {
+            app.press_direction(Direction::North);
+        }
+        app.press_direction(Direction::East);
+        assert_eq!(app.game.portal_destination(), Some(LevelId::TrappedRat));
+        app.press_a();
+        assert_eq!(app.game.level_id(), LevelId::TrappedRat);
+
+        app.exit_level();
+        for _ in 0..3 {
+            app.press_direction(Direction::North);
+        }
+        app.press_direction(Direction::East);
+        app.press_direction(Direction::East);
+        assert_eq!(app.game.portal_destination(), Some(LevelId::TrappedRat2));
+        app.press_a();
+        assert_eq!(app.game.level_id(), LevelId::TrappedRat2);
+    }
+
+    #[test]
     fn up_down_chord_returns_to_intro() {
         let mut app = App::new();
         app.press_direction(Direction::North);

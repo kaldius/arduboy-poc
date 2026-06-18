@@ -368,6 +368,17 @@ mod tests {
     }
 
     #[test]
+    fn trapped_rat_levels_match_original_layouts() {
+        for (id, wall_count) in [(LevelId::TrappedRat, 40), (LevelId::TrappedRat2, 46)] {
+            let game = Game::new(id);
+            assert_eq!((game.width(), game.height()), (10, 13));
+            assert_eq!(game.player_position, Position::new(4, 9));
+            assert_eq!(game.rat_count(), 13);
+            assert_eq!(game.grid.count(Cell::Wall), wall_count);
+        }
+    }
+
+    #[test]
     fn intro_rats_take_turns() {
         let mut game = Game::new(LevelId::Intro);
         game.act(None);

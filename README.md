@@ -17,6 +17,8 @@ directly into Arduboy2's framebuffer.
 - In the intro, stand on the portal above the player and press A to enter the
   Rats level.
 - Continue two cells north to the next portal and press A to enter More Rats.
+- The two portals immediately east of More Rats enter Trapped Rat and
+  Trapped Rat 2.
 - Up+Down: exit the active puzzle and return to the intro.
 
 ## Toolchain
