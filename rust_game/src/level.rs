@@ -7,6 +7,27 @@ const W: Cell = Cell::Wall;
 const O: Cell = Cell::Portal;
 const P: Cell = Cell::Player;
 const R: Cell = Cell::Rat;
+pub(crate) const MAX_RATS: usize = 3;
+
+#[derive(Clone, Copy)]
+pub(crate) struct RatSpawn {
+    pub(crate) position: Position,
+    pub(crate) direction: Direction,
+}
+
+impl RatSpawn {
+    const EMPTY: Self = Self {
+        position: Position::new(0, 0),
+        direction: Direction::South,
+    };
+
+    const fn new(position: Position, direction: Direction) -> Self {
+        Self {
+            position,
+            direction,
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum LevelId {
@@ -19,8 +40,8 @@ pub(crate) struct Level {
     pub(crate) grid: Grid,
     pub(crate) player_position: Position,
     pub(crate) player_direction: Direction,
-    pub(crate) rat_position: Option<Position>,
-    pub(crate) rat_direction: Direction,
+    pub(crate) rats: [RatSpawn; MAX_RATS],
+    pub(crate) rat_count: u8,
     pub(crate) portal_position: Option<Position>,
 }
 
@@ -53,8 +74,12 @@ const fn intro() -> Level {
         grid: Grid::new(9, 11, pad_cells(source)),
         player_position: Position::new(4, 10),
         player_direction: Direction::North,
-        rat_position: None,
-        rat_direction: Direction::South,
+        rats: [
+            RatSpawn::new(Position::new(6, 0), Direction::Southwest),
+            RatSpawn::new(Position::new(2, 9), Direction::Southeast),
+            RatSpawn::new(Position::new(6, 9), Direction::Southwest),
+        ],
+        rat_count: 3,
         portal_position: Some(Position::new(4, 9)),
     }
 }
@@ -76,8 +101,12 @@ const fn rats() -> Level {
         grid: Grid::new(6, 8, pad_cells(source)),
         player_position: Position::new(3, 6),
         player_direction: Direction::North,
-        rat_position: Some(Position::new(3, 0)),
-        rat_direction: Direction::South,
+        rats: [
+            RatSpawn::new(Position::new(3, 0), Direction::South),
+            RatSpawn::EMPTY,
+            RatSpawn::EMPTY,
+        ],
+        rat_count: 1,
         portal_position: None,
     }
 }

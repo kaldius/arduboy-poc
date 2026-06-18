@@ -25,7 +25,12 @@ pub(crate) fn render(app: &App, framebuffer: &mut [u8]) {
                 Cell::Player => {
                     draw_player(framebuffer, screen_x, screen_y, game.player_direction())
                 }
-                Cell::Rat => draw_rat(framebuffer, screen_x, screen_y, game.rat_direction()),
+                Cell::Rat => draw_rat(
+                    framebuffer,
+                    screen_x,
+                    screen_y,
+                    game.rat_direction_at(position),
+                ),
             }
         }
     }

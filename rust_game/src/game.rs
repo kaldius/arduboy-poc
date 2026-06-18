@@ -1,6 +1,6 @@
 use crate::direction::Direction;
 use crate::grid::{Cell, Grid};
-use crate::level::{self, LevelId};
+use crate::level::{self, LevelId, MAX_RATS};
 use crate::position::Position;
 
 #[repr(u8)]
@@ -11,13 +11,28 @@ pub(crate) enum PlayState {
     GameOver,
 }
 
+#[derive(Clone, Copy)]
+struct Rat {
+    position: Position,
+    direction: Direction,
+    alive: bool,
+}
+
+impl Rat {
+    const EMPTY: Self = Self {
+        position: Position::new(0, 0),
+        direction: Direction::South,
+        alive: false,
+    };
+}
+
 pub(crate) struct Game {
     level_id: LevelId,
     grid: Grid,
     player_position: Position,
     player_direction: Direction,
-    rat_position: Option<Position>,
-    rat_direction: Direction,
+    rats: [Rat; MAX_RATS],
+    initial_rat_count: u8,
     portal_position: Option<Position>,
     state: PlayState,
 }
@@ -25,13 +40,24 @@ pub(crate) struct Game {
 impl Game {
     pub(crate) const fn new(level_id: LevelId) -> Self {
         let level = level::load(level_id);
+        let mut rats = [Rat::EMPTY; MAX_RATS];
+        let mut index = 0;
+        while index < level.rat_count as usize {
+            rats[index] = Rat {
+                position: level.rats[index].position,
+                direction: level.rats[index].direction,
+                alive: true,
+            };
+            index += 1;
+        }
+
         Self {
             level_id: level.id,
             grid: level.grid,
             player_position: level.player_position,
             player_direction: level.player_direction,
-            rat_position: level.rat_position,
-            rat_direction: level.rat_direction,
+            rats,
+            initial_rat_count: level.rat_count,
             portal_position: level.portal_position,
             state: PlayState::Playing,
         }
@@ -55,16 +81,14 @@ impl Game {
             self.move_player(direction);
         }
 
-        if self.level_id == LevelId::Intro {
+        if self.rat_count() == 0 {
+            if self.level_id != LevelId::Intro && self.initial_rat_count != 0 {
+                self.state = PlayState::Won;
+            }
             return;
         }
 
-        if self.rat_position.is_none() {
-            self.state = PlayState::Won;
-            return;
-        }
-
-        self.move_rat(player_moved);
+        self.move_rats(player_moved);
     }
 
     pub(crate) fn cell(&self, position: Position) -> Cell {
@@ -79,8 +103,12 @@ impl Game {
         self.player_position
     }
 
-    pub(crate) fn rat_direction(&self) -> Direction {
-        self.rat_direction
+    pub(crate) fn rat_direction_at(&self, position: Position) -> Direction {
+        self.rats
+            .iter()
+            .find(|rat| rat.alive && rat.position == position)
+            .map(|rat| rat.direction)
+            .unwrap_or(Direction::South)
     }
 
     pub(crate) fn state(&self) -> PlayState {
@@ -106,31 +134,62 @@ impl Game {
     fn move_player(&mut self, direction: Direction) {
         self.player_direction = direction;
         let destination = self.player_position.offset(direction);
-        let destination_cell = self.cell(destination);
-        if destination_cell == Cell::Wall
-            || (self.level_id == LevelId::Intro && destination_cell == Cell::Rat)
-        {
+        if self.cell(destination) == Cell::Wall {
             return;
         }
 
-        let old_cell = if self.portal_position == Some(self.player_position) {
-            Cell::Portal
-        } else {
-            Cell::Empty
-        };
-        self.grid.set_cell(self.player_position, old_cell);
+        self.restore_underlying_cell(self.player_position);
         self.player_position = destination;
-
-        if self.rat_position == Some(destination) {
-            self.rat_position = None;
-        }
-
+        self.kill_rat_at(destination);
         self.grid.set_cell(self.player_position, Cell::Player);
     }
 
-    fn move_rat(&mut self, player_moved: bool) {
-        let rat = self.rat_position.unwrap();
-        let Some(face_direction) = Direction::toward(rat, self.player_position) else {
+    fn move_rats(&mut self, player_moved: bool) {
+        let mut order = [usize::MAX; MAX_RATS];
+        let mut order_len = 0;
+
+        for index in 0..MAX_RATS {
+            if self.rats[index].alive {
+                order[order_len] = index;
+                order_len += 1;
+            }
+        }
+
+        // Infestation resolves nearest rats first, then position order.
+        for i in 0..order_len {
+            let mut best = i;
+            for candidate in i + 1..order_len {
+                let candidate_rat = self.rats[order[candidate]];
+                let best_rat = self.rats[order[best]];
+                let candidate_key = (
+                    candidate_rat
+                        .position
+                        .distance_squared(self.player_position),
+                    candidate_rat.position.y,
+                    candidate_rat.position.x,
+                );
+                let best_key = (
+                    best_rat.position.distance_squared(self.player_position),
+                    best_rat.position.y,
+                    best_rat.position.x,
+                );
+                if candidate_key < best_key {
+                    best = candidate;
+                }
+            }
+            order.swap(i, best);
+        }
+
+        for &index in &order[..order_len] {
+            if self.state == PlayState::Playing && self.rats[index].alive {
+                self.move_rat(index, player_moved);
+            }
+        }
+    }
+
+    fn move_rat(&mut self, index: usize, player_moved: bool) {
+        let rat_position = self.rats[index].position;
+        let Some(face_direction) = Direction::toward(rat_position, self.player_position) else {
             self.state = PlayState::GameOver;
             return;
         };
@@ -142,15 +201,14 @@ impl Game {
             directions[2] = face_direction.y_only();
         }
 
-        // The stay option matches Infestation's rat move ordering.
         let mut best_direction = None;
-        let mut best_score = rat.distance_squared(self.player_position);
+        let mut best_score = rat_position.distance_squared(self.player_position);
         let mut best_cost = 0;
         let mut best_player_still = true;
         let mut best_rank = u8::MAX;
 
         for direction in directions.into_iter().flatten() {
-            let destination = rat.offset(direction);
+            let destination = rat_position.offset(direction);
             if matches!(self.cell(destination), Cell::Wall | Cell::Rat) {
                 continue;
             }
@@ -177,20 +235,43 @@ impl Game {
         }
 
         let Some(direction) = best_direction else {
-            self.rat_direction = face_direction;
+            self.rats[index].direction = face_direction;
             return;
         };
 
-        let destination = rat.offset(direction);
-        self.grid.set_cell(rat, Cell::Empty);
-        self.rat_position = Some(destination);
-        self.rat_direction = direction;
+        let destination = rat_position.offset(direction);
+        self.restore_underlying_cell(rat_position);
+        self.rats[index].position = destination;
+        self.rats[index].direction = direction;
 
         if destination == self.player_position {
             self.state = PlayState::GameOver;
         }
 
         self.grid.set_cell(destination, Cell::Rat);
+    }
+
+    fn restore_underlying_cell(&mut self, position: Position) {
+        let cell = if self.portal_position == Some(position) {
+            Cell::Portal
+        } else {
+            Cell::Empty
+        };
+        self.grid.set_cell(position, cell);
+    }
+
+    fn kill_rat_at(&mut self, position: Position) {
+        if let Some(rat) = self
+            .rats
+            .iter_mut()
+            .find(|rat| rat.alive && rat.position == position)
+        {
+            rat.alive = false;
+        }
+    }
+
+    fn rat_count(&self) -> u8 {
+        self.rats.iter().filter(|rat| rat.alive).count() as u8
     }
 }
 
@@ -203,11 +284,16 @@ mod tests {
         game.grid.fill(Cell::Empty);
         game.player_position = Position::new(2, 2);
         game.player_direction = player_direction;
-        game.rat_position = Some(Position::new(2, 1));
-        game.rat_direction = Direction::South;
+        game.rats = [Rat::EMPTY; MAX_RATS];
+        game.rats[0] = Rat {
+            position: Position::new(2, 1),
+            direction: Direction::South,
+            alive: true,
+        };
+        game.initial_rat_count = 1;
         game.state = PlayState::Playing;
         game.grid.set_cell(game.player_position, Cell::Player);
-        game.grid.set_cell(game.rat_position.unwrap(), Cell::Rat);
+        game.grid.set_cell(game.rats[0].position, Cell::Rat);
         game
     }
 
@@ -215,8 +301,26 @@ mod tests {
     fn initial_level_matches_rats_map() {
         let game = Game::new(LevelId::Rats);
         assert_eq!(game.player_position, Position::new(3, 6));
-        assert_eq!(game.rat_position, Some(Position::new(3, 0)));
+        assert_eq!(game.rat_count(), 1);
+        assert_eq!(game.rats[0].position, Position::new(3, 0));
         assert_eq!(game.grid.count(Cell::Wall), 21);
+    }
+
+    #[test]
+    fn intro_has_three_active_rats() {
+        let game = Game::new(LevelId::Intro);
+        assert_eq!(game.rat_count(), 3);
+    }
+
+    #[test]
+    fn intro_rats_take_turns() {
+        let mut game = Game::new(LevelId::Intro);
+        game.act(None);
+
+        assert!(game
+            .rats
+            .iter()
+            .any(|rat| rat.alive && rat.position == Position::new(6, 10)));
     }
 
     #[test]
@@ -240,11 +344,56 @@ mod tests {
     }
 
     #[test]
+    fn player_can_kill_one_of_multiple_rats() {
+        let mut game = encounter(Direction::South);
+        game.rats[1] = Rat {
+            position: Position::new(4, 4),
+            direction: Direction::North,
+            alive: true,
+        };
+        game.initial_rat_count = 2;
+        game.grid.set_cell(game.rats[1].position, Cell::Rat);
+
+        game.act(Some(Direction::North));
+
+        assert_eq!(game.rat_count(), 1);
+        assert_eq!(game.state, PlayState::Playing);
+    }
+
+    #[test]
+    fn multiple_rats_move_sequentially_without_overlapping() {
+        let mut game = Game::new(LevelId::Intro);
+        game.grid.fill(Cell::Empty);
+        game.player_position = Position::new(4, 4);
+        game.rats = [Rat::EMPTY; MAX_RATS];
+        game.rats[0] = Rat {
+            position: Position::new(1, 1),
+            direction: Direction::Southeast,
+            alive: true,
+        };
+        game.rats[1] = Rat {
+            position: Position::new(2, 1),
+            direction: Direction::Southeast,
+            alive: true,
+        };
+        game.initial_rat_count = 2;
+        game.grid.set_cell(game.player_position, Cell::Player);
+        game.grid.set_cell(game.rats[0].position, Cell::Rat);
+        game.grid.set_cell(game.rats[1].position, Cell::Rat);
+
+        game.act(None);
+
+        assert_ne!(game.rats[0].position, game.rats[1].position);
+        assert_ne!(game.rats[0].position, Position::new(1, 1));
+        assert_ne!(game.rats[1].position, Position::new(2, 1));
+    }
+
+    #[test]
     fn sword_blocks_a_rat_attacking_from_the_front() {
         let mut game = encounter(Direction::North);
         game.act(None);
         assert_eq!(game.state, PlayState::Playing);
-        assert_eq!(game.rat_position, Some(Position::new(2, 1)));
+        assert_eq!(game.rats[0].position, Position::new(2, 1));
     }
 
     #[test]
@@ -252,7 +401,7 @@ mod tests {
         let mut game = encounter(Direction::East);
         game.act(None);
         assert_eq!(game.state, PlayState::GameOver);
-        assert_eq!(game.rat_position, Some(Position::new(2, 2)));
+        assert_eq!(game.rats[0].position, Position::new(2, 2));
     }
 
     #[test]
@@ -260,7 +409,7 @@ mod tests {
         let mut game = encounter(Direction::South);
         game.act(Some(Direction::North));
         assert_eq!(game.state, PlayState::Won);
-        assert_eq!(game.rat_position, None);
+        assert_eq!(game.rat_count(), 0);
         assert_eq!(game.player_position, Position::new(2, 1));
     }
 }
