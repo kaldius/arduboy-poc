@@ -6,10 +6,11 @@ ARDUBOY2_LIB ?= ../arduboy2
 WARNINGS ?= default
 PORT ?=
 RUST_LIB ?= rust_game/target/avr-none/release/libarduboy_game_rust.a
+RUST_SOURCES := $(wildcard rust_game/src/*.rs)
 
 .PHONY: build test upload list-boards clean
 
-$(RUST_LIB): rust_game/src/lib.rs rust_game/Cargo.toml rust_game/.cargo/config.toml rust_game/rust-toolchain.toml
+$(RUST_LIB): $(RUST_SOURCES) rust_game/Cargo.toml rust_game/.cargo/config.toml rust_game/rust-toolchain.toml
 	cd rust_game && cargo build --release
 
 build: $(RUST_LIB)
