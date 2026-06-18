@@ -34,9 +34,15 @@ The default board target is `arduboy:avr:arduboy`. If needed, the sketch can als
 ```sh
 make build
 make test
+make scenario-test
 make list-boards
 make upload PORT=/dev/cu.usbmodemXXXX
 ```
+
+`make scenario-test` runs the host-only core against the original Infestation
+scenario fixtures in `../infestation/scenario_tests`. Unsupported mechanics are
+reported separately from behavioral failures. The harness is a separate crate
+and is not linked into the Arduboy build.
 
 For stricter compiler warnings:
 

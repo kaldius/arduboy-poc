@@ -1,0 +1,8 @@
+[package]
+name = "arduboy-scenario-harness"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["scenario-harness"]
+scenario-harness = []

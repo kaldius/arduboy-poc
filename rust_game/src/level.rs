@@ -7,7 +7,7 @@ const W: Cell = Cell::Wall;
 const O: Cell = Cell::Portal;
 const P: Cell = Cell::Player;
 const R: Cell = Cell::Rat;
-pub(crate) const MAX_RATS: usize = 3;
+pub(crate) const MAX_RATS: usize = 4;
 
 #[derive(Clone, Copy)]
 pub(crate) struct RatSpawn {
@@ -78,6 +78,7 @@ const fn intro() -> Level {
             RatSpawn::new(Position::new(6, 0), Direction::Southwest),
             RatSpawn::new(Position::new(2, 9), Direction::Southeast),
             RatSpawn::new(Position::new(6, 9), Direction::Southwest),
+            RatSpawn::EMPTY,
         ],
         rat_count: 3,
         portal_position: Some(Position::new(4, 9)),
@@ -103,6 +104,7 @@ const fn rats() -> Level {
         player_direction: Direction::North,
         rats: [
             RatSpawn::new(Position::new(3, 0), Direction::South),
+            RatSpawn::EMPTY,
             RatSpawn::EMPTY,
             RatSpawn::EMPTY,
         ],

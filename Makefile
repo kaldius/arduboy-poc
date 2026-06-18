@@ -8,7 +8,7 @@ PORT ?=
 RUST_LIB ?= rust_game/target/avr-none/release/libarduboy_game_rust.a
 RUST_SOURCES := $(wildcard rust_game/src/*.rs)
 
-.PHONY: build test upload list-boards clean
+.PHONY: build test scenario-test upload list-boards clean
 
 $(RUST_LIB): $(RUST_SOURCES) rust_game/Cargo.toml rust_game/.cargo/config.toml rust_game/rust-toolchain.toml
 	cd rust_game && cargo build --release
@@ -18,6 +18,9 @@ build: $(RUST_LIB)
 
 test:
 	cargo +nightly test --manifest-path rust_game/Cargo.toml
+
+scenario-test:
+	cargo +nightly run --manifest-path scenario_harness/Cargo.toml -- ../infestation/scenario_tests
 
 upload: build
 ifndef PORT
@@ -31,3 +34,4 @@ list-boards:
 clean:
 	rm -rf $(BUILD_DIR)
 	cd rust_game && cargo clean
+	cargo clean --manifest-path scenario_harness/Cargo.toml

@@ -1,4 +1,6 @@
 use crate::direction::Direction;
+#[cfg(feature = "scenario-harness")]
+use crate::grid::MAX_CELL_COUNT;
 use crate::grid::{Cell, Grid};
 use crate::level::{self, LevelId, MAX_RATS};
 use crate::position::Position;
@@ -129,6 +131,38 @@ impl Game {
 
     pub(crate) fn is_on_portal(&self) -> bool {
         self.portal_position == Some(self.player_position)
+    }
+
+    #[cfg(feature = "scenario-harness")]
+    pub(crate) fn from_scenario(
+        width: u8,
+        height: u8,
+        cells: [Cell; MAX_CELL_COUNT],
+        player_position: Position,
+        player_direction: Direction,
+        rat_positions: [Position; MAX_RATS],
+        rat_directions: [Direction; MAX_RATS],
+        rat_count: u8,
+    ) -> Self {
+        let mut rats = [Rat::EMPTY; MAX_RATS];
+        for index in 0..rat_count as usize {
+            rats[index] = Rat {
+                position: rat_positions[index],
+                direction: rat_directions[index],
+                alive: true,
+            };
+        }
+
+        Self {
+            level_id: LevelId::Rats,
+            grid: Grid::new(width, height, cells),
+            player_position,
+            player_direction,
+            rats,
+            initial_rat_count: rat_count,
+            portal_position: None,
+            state: PlayState::Playing,
+        }
     }
 
     fn move_player(&mut self, direction: Direction) {

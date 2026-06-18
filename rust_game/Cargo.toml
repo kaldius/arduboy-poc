@@ -7,6 +7,9 @@ edition = "2021"
 crate-type = ["staticlib"]
 name = "arduboy_game_rust"
 
+[features]
+scenario-harness = []
+
 [profile.release]
 codegen-units = 1
 lto = true
