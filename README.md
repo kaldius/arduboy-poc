@@ -14,6 +14,9 @@ directly into Arduboy2's framebuffer.
 - B: restart the level
 - A+B: toggle camera mode; while active, the D-pad scrolls without taking turns.
   Press A+B again to return the camera to the player.
+- In the intro, stand on the portal above the player and press A to enter the
+  Rats level.
+- Up+Down: exit the Rats level and return to the intro.
 
 ## Toolchain
 

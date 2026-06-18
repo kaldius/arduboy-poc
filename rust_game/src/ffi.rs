@@ -58,6 +58,11 @@ pub extern "C" fn infestation_press_ab() {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn infestation_press_up_down() {
+    with_app_mut(App::exit_level);
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn infestation_render(framebuffer: *mut u8, length: u16) {
     if framebuffer.is_null() || usize::from(length) < FRAMEBUFFER_SIZE {
         return;

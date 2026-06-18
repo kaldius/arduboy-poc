@@ -1,6 +1,7 @@
 use crate::camera::Camera;
 use crate::direction::Direction;
 use crate::game::Game;
+use crate::level::LevelId;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum InputMode {
@@ -16,8 +17,8 @@ pub(crate) struct App {
 
 impl App {
     pub(crate) const fn new() -> Self {
-        let game = Game::new();
-        let camera = Camera::following(game.player_position());
+        let game = Game::new(LevelId::Intro);
+        let camera = Camera::following(game.player_position(), game.width(), game.height());
         Self {
             game,
             camera,
@@ -27,7 +28,7 @@ impl App {
 
     pub(crate) fn restart(&mut self) {
         self.game.restart();
-        self.camera.follow(self.game.player_position());
+        self.reset_camera();
         self.input_mode = InputMode::Player;
     }
 
@@ -42,7 +43,13 @@ impl App {
     }
 
     pub(crate) fn press_a(&mut self) {
-        if self.input_mode == InputMode::Player {
+        if self.input_mode != InputMode::Player {
+            return;
+        }
+
+        if self.game.level_id() == LevelId::Intro && self.game.is_on_portal() {
+            self.load_level(LevelId::Rats);
+        } else {
             self.game.act(None);
             self.camera.follow(self.game.player_position());
         }
@@ -64,6 +71,12 @@ impl App {
         };
     }
 
+    pub(crate) fn exit_level(&mut self) {
+        if self.game.level_id() != LevelId::Intro {
+            self.load_level(LevelId::Intro);
+        }
+    }
+
     pub(crate) fn game(&self) -> &Game {
         &self.game
     }
@@ -75,6 +88,20 @@ impl App {
     pub(crate) fn input_mode(&self) -> InputMode {
         self.input_mode
     }
+
+    fn load_level(&mut self, level_id: LevelId) {
+        self.game.load(level_id);
+        self.reset_camera();
+        self.input_mode = InputMode::Player;
+    }
+
+    fn reset_camera(&mut self) {
+        self.camera = Camera::following(
+            self.game.player_position(),
+            self.game.width(),
+            self.game.height(),
+        );
+    }
 }
 
 #[cfg(test)]
@@ -83,15 +110,23 @@ mod tests {
     use crate::position::Position;
 
     #[test]
+    fn starts_in_intro() {
+        let app = App::new();
+        assert_eq!(app.game.level_id(), LevelId::Intro);
+        assert_eq!(app.game.player_position(), Position::new(4, 10));
+    }
+
+    #[test]
     fn camera_mode_moves_camera_without_moving_player() {
         let mut app = App::new();
         let player_before = app.game.player_position();
+        let camera_before = app.camera;
 
         app.toggle_camera_mode();
         app.press_direction(Direction::North);
 
         assert_eq!(app.game.player_position(), player_before);
-        assert_eq!(app.camera.y, 26);
+        assert!(app.camera.y < camera_before.y);
     }
 
     #[test]
@@ -103,15 +138,21 @@ mod tests {
         app.toggle_camera_mode();
 
         assert_eq!(app.input_mode, InputMode::Player);
-        assert_eq!(app.camera, Camera::following(app.game.player_position()));
+        assert_eq!(
+            app.camera,
+            Camera::following(
+                app.game.player_position(),
+                app.game.width(),
+                app.game.height()
+            )
+        );
     }
 
     #[test]
     fn camera_mode_suppresses_stall_and_restart() {
         let mut app = App::new();
-        app.press_direction(Direction::East);
+        app.press_direction(Direction::North);
         let player_before = app.game.player_position();
-        let rat_before = app.game.rat_position();
 
         app.toggle_camera_mode();
         app.press_a();
@@ -119,7 +160,31 @@ mod tests {
 
         assert_eq!(app.input_mode, InputMode::Camera);
         assert_eq!(app.game.player_position(), player_before);
-        assert_eq!(app.game.rat_position(), rat_before);
-        assert_ne!(player_before, Position::new(3, 6));
+        assert_ne!(player_before, Position::new(4, 10));
+    }
+
+    #[test]
+    fn a_enters_rats_level_from_intro_portal() {
+        let mut app = App::new();
+        app.press_direction(Direction::North);
+        assert!(app.game.is_on_portal());
+
+        app.press_a();
+
+        assert_eq!(app.game.level_id(), LevelId::Rats);
+        assert_eq!(app.game.player_position(), Position::new(3, 6));
+    }
+
+    #[test]
+    fn up_down_chord_returns_to_intro() {
+        let mut app = App::new();
+        app.press_direction(Direction::North);
+        app.press_a();
+        assert_eq!(app.game.level_id(), LevelId::Rats);
+
+        app.exit_level();
+
+        assert_eq!(app.game.level_id(), LevelId::Intro);
+        assert_eq!(app.game.player_position(), Position::new(4, 10));
     }
 }

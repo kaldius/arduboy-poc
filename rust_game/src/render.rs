@@ -2,7 +2,7 @@ use crate::app::{App, InputMode};
 use crate::camera::{SCREEN_HEIGHT, SCREEN_WIDTH, TILE_SIZE};
 use crate::direction::Direction;
 use crate::game::PlayState;
-use crate::grid::{Cell, HEIGHT as GRID_HEIGHT, WIDTH as GRID_WIDTH};
+use crate::grid::Cell;
 use crate::position::Position;
 
 pub(crate) const FRAMEBUFFER_SIZE: usize = SCREEN_WIDTH as usize * SCREEN_HEIGHT as usize / 8;
@@ -12,8 +12,8 @@ pub(crate) fn render(app: &App, framebuffer: &mut [u8]) {
     let game = app.game();
     let camera = app.camera();
 
-    for y in 0..GRID_HEIGHT {
-        for x in 0..GRID_WIDTH {
+    for y in 0..game.height() {
+        for x in 0..game.width() {
             let position = Position::new(x as i8, y as i8);
             let screen_x = i16::from(position.x) * TILE_SIZE - camera.x;
             let screen_y = i16::from(position.y) * TILE_SIZE - camera.y;
@@ -21,6 +21,7 @@ pub(crate) fn render(app: &App, framebuffer: &mut [u8]) {
             match game.cell(position) {
                 Cell::Empty => {}
                 Cell::Wall => draw_wall(framebuffer, screen_x, screen_y),
+                Cell::Portal => draw_portal(framebuffer, screen_x, screen_y),
                 Cell::Player => {
                     draw_player(framebuffer, screen_x, screen_y, game.player_direction())
                 }
@@ -104,6 +105,20 @@ fn draw_rat(framebuffer: &mut [u8], x: i16, y: i16, direction: Direction) {
         x + 6 + i16::from(dx) * 4,
         y + 6 + i16::from(dy) * 4,
     );
+}
+
+fn draw_portal(framebuffer: &mut [u8], x: i16, y: i16) {
+    for inset in [1, 3, 5] {
+        let size = TILE_SIZE - inset * 2;
+        for px in x + inset..x + inset + size {
+            set_pixel(framebuffer, px, y + inset);
+            set_pixel(framebuffer, px, y + inset + size - 1);
+        }
+        for py in y + inset..y + inset + size {
+            set_pixel(framebuffer, x + inset, py);
+            set_pixel(framebuffer, x + inset + size - 1, py);
+        }
+    }
 }
 
 fn draw_status(framebuffer: &mut [u8], won: bool) {
