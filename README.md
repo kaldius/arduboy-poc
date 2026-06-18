@@ -2,7 +2,16 @@
 
 Terminal-first Arduboy project using the local Arduboy2 checkout at `../arduboy2`.
 
-The sketch is a small Rust FFI proof of concept: Arduboy2/C++ handles hardware setup, input, drawing, and upload; Rust owns the game state and update logic.
+The sketch is an early port of Infestation's `rats` level. Arduboy2/C++ handles
+hardware setup, button edge detection, and display upload. The `no_std`,
+allocation-free Rust static library owns game state, resolves turns, and writes
+directly into Arduboy2's framebuffer.
+
+## Controls
+
+- D-pad: move and face the player, then resolve the rat's turn
+- A: stall for one turn
+- B: restart the level
 
 ## Toolchain
 
@@ -19,6 +28,7 @@ The default board target is `arduboy:avr:arduboy`. If needed, the sketch can als
 
 ```sh
 make build
+make test
 make list-boards
 make upload PORT=/dev/cu.usbmodemXXXX
 ```
